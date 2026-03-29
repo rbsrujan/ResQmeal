@@ -8,19 +8,15 @@ token.json
 # Intermediate files
 .tmp/
 .tmp/*
-*.zip
-archive.zip
-directives.zip
-skills.zip
-execution.zip
 
 # Web dependencies and build
 node_modules/
 dist/
 dist-ssr/
 
-# Python caches
-__pycache__/
-*.pyc
-*.pyo
+# Large files and datasets
+archive.zip
+kaggle_dataset/
+*.zip
+*.tar.gz
 

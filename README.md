@@ -1,76 +1,84 @@
-# ResQmeal (Zero Waste AI) 🥗🚴✨
+# ResQmeal - AI-Powered Food Waste Reduction Platform
 
-**Connecting food surplus with those in need using AI-driven safety checks and real-time tracking.**
+ResQmeal is a 3-layer architecture project designed to minimize food waste by connecting donors (restaurants, hotels, etc.) with receivers (NGOs, shelters, farms) through an AI-powered logistics and tracking system.
 
-ResQmeal is a decentralized food donation platform designed to bridge the gap between food surplus (Donors) and food scarcity (Receivers) through an efficient, volunteer-led delivery network.
+## 🏗️ 3-Layer Architecture
 
----
+This project follows a modular 3-layer architecture for reliability and consistency:
 
-## 🚀 Vision
-Every year, 1.3 billion tons of food is wasted while millions go hungry. ResQmeal uses AI to verify food safety and OSRM for real-time routing, ensuring that surplus food reaches its destination safely and quickly.
+1.  **Layer 1: Directive (What to do)**
+    *   SOPs and instructions located in `directives/`
+    *   Defines the business logic and goals.
+2.  **Layer 2: Orchestration (Decision making)**
+    *   The intelligent routing layer (e.g., this AI assistant or backend services).
+    *   Glues intent to execution.
+3.  **Layer 3: Execution (Doing the work)**
+    *   Deterministic scripts located in `execution/` (e.g., Python scripts for data processing).
+    *   The web application in `zero-waste-web/` handles the user-facing interactions.
 
----
+## 🚀 Getting Started
 
-## 🏗️ Project Structure
-This repository is a monorepo containing the following components:
+### Prerequisites
 
-- **`zero-waste-web/`**: The main React 18 + Vite dashboard for Donors, Volunteers, and Receivers.
-- **`directives/`**: Standard Operating Procedures (SOPs) for the platform's 3-layer architecture.
-- **`execution/`**: Deterministic Python scripts for model calibration and dataset analysis.
+*   Node.js (v18+)
+*   npm
+*   Supabase Account
 
----
+### Installation
 
-## 🛠️ Tech Stack
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS.
-- **Backend & Database**: Supabase (PostgreSQL, Auth, Realtime).
-- **Maps & Routing**: Leaflet.js and OSRM (Open Source Routing Machine).
-- **Icons**: Lucide React.
-- **Security**: Supabase Row Level Security (RLS) and OTP-based verification.
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/karthiktotad/ResQmeal.git
+    cd ResQmeal
+    ```
 
----
+2.  Install dependencies for the web app:
+    ```bash
+    cd zero-waste-web
+    npm install
+    ```
 
-## ⚙️ Quick Start (Local Setup)
+### Environment Configuration
 
-### 1. Database Setup
-1. Create a new project on [Supabase](https://supabase.com/).
-2. Run the SQL commands found in `zero-waste-web/supabase_setup.sql` in your Supabase SQL Editor to initialize the schema and RLS policies.
+1.  Copy `.env.example` to `.env` in both the root and `zero-waste-web/`:
+    ```bash
+    # From root
+    cp .env.example .env
+    cp .env.example zero-waste-web/.env
+    ```
+2.  Update the `.env` files with your **Supabase URL** and **Anon Key**.
 
-### 2. Environment Variables
-Copy the `.env.example` file to `.env` in the `zero-waste-web/` directory and fill in your Supabase credentials:
-```bash
-cp zero-waste-web/.env.example zero-waste-web/.env
-```
+### Database Setup
 
-### 3. Install & Run
+1.  Log in to your Supabase dashboard.
+2.  Go to the **SQL Editor**.
+3.  Copy and run the contents of `zero-waste-web/supabase_setup.sql`.
+4.  Run `zero-waste-web/supabase_expansion.sql` to add tracking and location-based features.
+
+### Run Locally
+
 ```bash
 cd zero-waste-web
-npm install
 npm run dev
 ```
 
----
+The application will be available at `http://localhost:5173`.
 
-## 📱 User Flows
+## 📁 Project Structure
 
-### 🍎 Donors
-- Upload food details with AI safety classification.
-- Set pickup location on an interactive map.
-- Track live deliveries of your donations.
+*   `directives/`: SOPs and schema definitions.
+*   `execution/`: Backend/Deterministic scripts.
+*   `zero-waste-web/`: The main React + Vite + Supabase application.
+*   `.tmp/`: Temporary processing files (ignored by Git).
 
-### 🚴 Volunteers
-- Browse nearby pickups on a map.
-- Real-time routing from Volunteer -> Donor -> Receiver.
-- Securely verify deliveries via 4-digit OTP provided by the receiver.
+## 🛠️ Built With
 
-### 🏘️ Receivers
-- Manage incoming deliveries on a central dashboard.
-- Generate and provide verification codes (OTP) to volunteers.
-- View real-time GPS tracking of incoming food.
+*   [React](https://reactjs.org/)
+*   [Vite](https://vitejs.dev/)
+*   [Supabase](https://supabase.com/)
+*   [Lucide React Icons](https://lucide.dev/)
+*   [Tailwind CSS](https://tailwindcss.com/)
 
----
+## 📄 License
 
-## 🛡️ License
-Distributed under the MIT License. See `LICENSE` for more information.
-
----
-*Created with ❤️ by the ResQmeal Team.*
+This project is licensed under the MIT License - see the LICENSE file for details.
