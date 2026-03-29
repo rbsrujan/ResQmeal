@@ -82,3 +82,12 @@ The application will be available at `http://localhost:5173`.
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+
+## 🚀 Live Demo
+
+🔗 [Click here to view the live website](https://res-qmeal-r0izd2zsq-karthiktotad51-4051s-projects.vercel.app/)
+
+## 🎥 Demo Video
+
+🔗 [Watch Demo Video](https://drive.google.com/drive/folders/16MQ1mxQyZo3_XfakH08bC1M-HlkGsQ-e)
