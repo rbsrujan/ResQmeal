@@ -135,101 +135,228 @@ export default function UploadPage() {
 
   const handleCapture = (img: string) => setPhoto(img);
 
-  const validateScore = (result: any) => {
-    if (result.reason?.toLowerCase().includes('clear face') ||
-        result.reason?.toLowerCase().includes('selfie mode')) {
-      return { ...result, score: 0, classification: 'Unsafe',
-        reason: 'Image appears to be a selfie. Please retake with only the food visible.' };
-    }
-    if (result.score > 92 && result.confidence !== 'High') {
-      return { ...result, score: 88,
-        reason: result.reason + ' (Score calibrated for safety.)' };
-    }
-    return result;
-  };
 
-  const handleNextSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!photo) return alert("Photo is mandatory for AI safety check");
-    
-    setStep(2);
-    setIsAnalyzing(true);
-    
-    setTimeout(() => {
-      const rawResult = {
-        score: Math.floor(Math.random() * (96 - 82 + 1)) + 82,
-        classification: 'human_safe',
-        reason: 'The food image shows healthy texture, no surface oxidation, and clear packaging. Freshness verified.',
-        confidence: 'High',
-        red_flags: []
-      };
-      
-      const validatedResult = validateScore(rawResult);
-      setAiResult(validatedResult);
-      setIsAnalyzing(false);
-    }, 2000);
-  };
 
-  const submitDonation = async (safetyResult: {
-    score: number;
-    classification: string;
-    reason: string;
-  }) => {
-    setIsSubmitting(true);
-
+  const uploadFoodImage = async (capturedImage: string): Promise<string> => {
     try {
-      let imageUrl = '';
-      if (photo) {
-        const blob = await fetch(photo).then(r => r.blob());
-        const fileName = `donation-${Date.now()}.jpg`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('food-images')
-          .upload(fileName, blob, { contentType: 'image/jpeg' });
-
-        if (!uploadError && uploadData) {
-          const { data: urlData } = supabase.storage
-            .from('food-images')
-            .getPublicUrl(fileName);
-          imageUrl = urlData.publicUrl;
-        }
+      let blob: Blob;
+      if (capturedImage.startsWith('data:')) {
+        const res = await fetch(capturedImage);
+        blob = await res.blob();
+      } else if (capturedImage.startsWith('blob:')) {
+        const res = await fetch(capturedImage);
+        blob = await res.blob();
+      } else {
+        throw new Error('Unknown image format');
       }
 
-      const expiryHours = safetyResult.classification === 'human_safe' ? 6 :
-                          safetyResult.classification === 'animal_safe' ? 12 : 2;
-      const expiryEstimate = new Date(
-        Date.now() + expiryHours * 60 * 60 * 1000
-      ).toISOString();
+      const fileName = `food-${user?.id}-${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('food-images')
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg',
+          upsert: false
+        });
 
-      const { data, error } = await supabase
-        .from('donations')
-        .insert({
-          donor_id: user?.id,
-          food_name: formData.name,
-          food_type: formData.type,
-          quantity: formData.quantity,
-          unit: formData.unit,
-          prepared_at: formData.prepTime || new Date().toISOString(),
-          location: formData.location,
-          lat: formData.lat || null,
-          lng: formData.lng || null,
-          image_url: imageUrl,
-          safety_score: safetyResult.score,
-          classification: safetyResult.classification.toLowerCase().replace(' ', '_'),
-          ai_reason: safetyResult.reason,
-          status: 'pending',
-          assigned_receiver_id: null,
-          expiry_estimate: expiryEstimate
+      if (uploadError) {
+        console.error('Image upload error:', uploadError);
+        return '';
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('food-images')
+        .getPublicUrl(fileName);
+
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      return '';
+    }
+  };
+
+  const FOOD_SAFETY_SYSTEM_PROMPT = `You are a food safety inspector AI. Analyze the food image with STRICT criteria.
+
+CRITICAL RULES:
+1. You are analyzing FOOD SAFETY for human consumption. Being too lenient = people get sick. Be conservative.
+2. A score of 90+ means PERFECTLY fresh food just prepared. This should be RARE. Most food scores 60-80.
+3. NEVER give 90+ to food showing ANY of these signs:
+   - Brown or dark patches anywhere on the food
+   - Soft/mushy texture visible
+   - Discoloration from natural color
+   - Wilting or shriveled appearance
+   - Any mold (white/green/black/grey fuzzy areas)
+   - Meat with grey, green or rainbow sheen
+
+VISUAL SCORING GUIDE:
+ROTTEN FOOD indicators → score 0-40:
+- Mold visible anywhere → max score 20
+- Heavy browning/blackening → max score 30  
+- Completely wilted/collapsed → max score 35
+
+GOOD FOOD → score 70-82:
+- Looks fresh but not perfect
+- Normal coloring, minor imperfections
+
+EXCELLENT → score 83-92:
+- Vibrant natural colors, firm texture
+
+Respond ONLY in valid JSON:
+{
+  "score": <integer 0-100>,
+  "classification": "<Human Safe|Animal Safe|Unsafe>",
+  "reason": "<what you SEE in the image, specific visual observations>",
+  "confidence": "<High|Medium|Low>",
+  "red_flags": ["<concerning visual signs>"],
+  "fresh_indicators": ["<positive signs>"]
+}`;
+
+  const preprocessImageForAI = async (imageData: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, 512, 512);
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 512, 512);
+        resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+      };
+      img.src = imageData;
+    });
+  };
+
+  const applyScoreSanityCheck = (result: any) => {
+    let { score, classification } = result;
+    const reason = (result.reason || '').toLowerCase();
+    const flags = (result.red_flags || []).join(' ').toLowerCase();
+
+    if (reason.includes('person') || reason.includes('face') || reason.includes('selfie')) {
+      return { ...result, score: 0, classification: 'Unsafe', reason: 'Non-food item (selfie) detected.' };
+    }
+
+    if (flags.includes('mold')) score = Math.min(score, 25);
+    if (flags.includes('brown')) score = Math.min(score, 45);
+    
+    classification = score >= 80 ? 'Human Safe' : score >= 50 ? 'Animal Safe' : 'Unsafe';
+    return { ...result, score, classification };
+  };
+
+  const analyzeFood = async (imageData: string) => {
+    setIsAnalyzing(true);
+    try {
+      const processedBase64 = await preprocessImageForAI(imageData);
+      
+      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+      
+      if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
+        console.warn("Anthropic API key is missing. Using high-quality mock for demonstration.");
+        await new Promise(r => setTimeout(r, 1500));
+        return applyScoreSanityCheck({
+          score: 88,
+          classification: 'Human Safe',
+          reason: 'Visual inspection shows fresh texture and natural vibrant colors. No signs of oxidation or decay detected.',
+          confidence: 'Medium (Mock Data)',
+          red_flags: []
+        });
+      }
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'dangerouslyAllowBrowser': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-sonnet-20240229',
+          max_tokens: 1000,
+          system: FOOD_SAFETY_SYSTEM_PROMPT,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: processedBase64 } },
+              { type: 'text', text: 'Analyze this food safety.' }
+            ]
+          }]
         })
-        .select()
-        .single();
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `API Error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const text = data.content[0].text;
+      return applyScoreSanityCheck(JSON.parse(text));
+    } catch (err: any) {
+      console.error('AI Analysis Failed:', err);
+      // Return a safe fallback so the app don't crash
+      return {
+        score: 0,
+        classification: 'Unsafe',
+        reason: `Analysis failed: ${err.message}. Please check your internet or API key.`,
+        confidence: 'Low'
+      };
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleNextSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!photo) return alert("Photo is mandatory");
+    
+    setStep(2);
+    try {
+      const result = await analyzeFood(photo);
+      setAiResult(result);
+    } catch (err) {
+      setAiResult({
+        score: 0,
+        classification: 'Unsafe',
+        reason: 'A technical error occurred during analysis.',
+        confidence: 'Low'
+      });
+    }
+  };
+
+  const submitDonation = async (safetyResult: any) => {
+    setIsSubmitting(true);
+    try {
+      const imageUrl = photo ? await uploadFoodImage(photo) : '';
+      const dbClassification = safetyResult.classification.toLowerCase().replace(/\s+/g, '_');
+      
+      const { data, error } = await supabase.from('donations').insert({
+        donor_id: user?.id,
+        food_name: formData.name,
+        food_type: formData.type,
+        quantity: formData.quantity,
+        unit: formData.unit,
+        prepared_at: formData.prepTime || new Date().toISOString(),
+        location: formData.location,
+        lat: formData.lat || null,
+        lng: formData.lng || null,
+        image_url: imageUrl,
+        safety_score: safetyResult.score,
+        classification: dbClassification,
+        ai_reason: safetyResult.reason,
+        status: 'pending',
+        pickup_status: 'awaiting_volunteer',
+        expiry_estimate: new Date(Date.now() + (dbClassification === 'human_safe' ? 6 : 12) * 3600000).toISOString()
+      }).select().single();
 
       if (error) throw error;
-
       setDonationId(data.id);
       setStep(3);
-
     } catch (err: any) {
-      alert(`Error posting donation: ${err.message}`);
+      alert(`Error: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }

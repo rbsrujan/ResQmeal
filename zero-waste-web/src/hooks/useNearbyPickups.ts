@@ -52,34 +52,29 @@ export const useNearbyPickups = (
   const [pickups, setPickups] = useState<PickupJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPickupAlert, setNewPickupAlert] = useState<PickupJob | null>(null);
+  const [isRadiusRelaxed, setIsRadiusRelaxed] = useState(false);
   const previousIds = useRef<Set<string>>(new Set());
 
   const fetchPickups = async () => {
-    const { data, error } = await supabase
-      .from('donations')
-      .select('*')
-      .eq('status', 'accepted')
-      .eq('pickup_status', 'awaiting_volunteer')
-      .order('accepted_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('donations')
+        .select('*')
+        .eq('status', 'accepted')
+        .or('pickup_status.eq.awaiting_volunteer,pickup_status.is.null')
+        .is('volunteer_id', null)
+        .order('accepted_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching pickups:', error);
-      setLoading(false);
-      return;
-    }
+      if (error) throw error;
 
-    let jobs: PickupJob[] = data || [];
+      let jobs: PickupJob[] = data || [];
 
-    // Attach distance if volunteer location known
-    if (volunteerLat && volunteerLng) {
-      jobs = jobs
-        .map(job => {
+      // Attach distance if volunteer location known
+      if (volunteerLat && volunteerLng) {
+        jobs = jobs.map(job => {
           if (job.lat && job.lng) {
             const distance_km = parseFloat(
-              getDistanceKm(
-                volunteerLat, volunteerLng,
-                job.lat, job.lng
-              ).toFixed(1)
+              getDistanceKm(volunteerLat, volunteerLng, job.lat, job.lng).toFixed(1)
             );
             return {
               ...job,
@@ -88,54 +83,66 @@ export const useNearbyPickups = (
             };
           }
           return { ...job, distance_km: 999, eta_minutes: 999 };
-        })
+        });
+
         // Filter by radius
-        .filter(job => job.distance_km! <= radiusKm)
-        // Sort nearest first
-        .sort((a, b) => (a.distance_km || 0) - (b.distance_km || 0));
-    }
-
-    // Detect NEW pickups for notification alert
-    jobs.forEach(job => {
-      if (!previousIds.current.has(job.id)) {
-        if (previousIds.current.size > 0) {
-          // Only alert after initial load
-          setNewPickupAlert(job);
-          setTimeout(() => setNewPickupAlert(null), 6000);
+        const inRadius = jobs.filter(job => job.distance_km! <= radiusKm);
+        
+        // ELASTIC RADIUS: If nothing within 15km, show closest (relaxed)
+        if (inRadius.length === 0 && jobs.length > 0) {
+          setIsRadiusRelaxed(true);
+          jobs = jobs
+            .sort((a, b) => (a.distance_km || 0) - (b.distance_km || 0))
+            .slice(0, 10); // Show top 10 closest
+        } else {
+          setIsRadiusRelaxed(false);
+          jobs = inRadius.sort((a, b) => (a.distance_km || 0) - (b.distance_km || 0));
         }
-        previousIds.current.add(job.id);
       }
-    });
 
-    setPickups(jobs);
-    setLoading(false);
+      // Detect NEW pickups for notification alert
+      jobs.forEach(job => {
+        if (!previousIds.current.has(job.id)) {
+          if (previousIds.current.size > 0) {
+            setNewPickupAlert(job);
+            setTimeout(() => setNewPickupAlert(null), 6000);
+          }
+          previousIds.current.add(job.id);
+        }
+      });
+
+      setPickups(jobs);
+    } catch (err) {
+      console.error('Pickups fetch failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchPickups();
 
-    // Realtime: listen for donations becoming 'accepted'
+    // Stable subscription (don't recreate on every Lat/Lng change)
     const channel = supabase
-      .channel('volunteer-pickups')
+      .channel('volunteer-realtime')
       .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'donations',
-        filter: "status=eq.accepted"
-      }, (payload) => {
-        console.log('New accepted donation:', payload.new);
-        fetchPickups(); // refresh list
+        event: '*', 
+        schema: 'public', 
+        table: 'donations' 
+      }, () => {
+        fetchPickups();
       })
       .subscribe();
 
-    // Poll every 30s as backup
-    const poll = setInterval(fetchPickups, 30000);
+    const poll = setInterval(fetchPickups, 45000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(poll);
     };
+    // Note: radiusKm is fine, but volunteerLat/Lng should ideally be debounced
+    // but for now we just let fetchPickups handle the calculation
   }, [volunteerLat, volunteerLng, radiusKm]);
 
-  return { pickups, loading, newPickupAlert, refetch: fetchPickups };
+  return { pickups, loading, newPickupAlert, isRadiusRelaxed, refetch: fetchPickups };
 };

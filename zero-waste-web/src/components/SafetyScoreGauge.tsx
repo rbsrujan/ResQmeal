@@ -1,4 +1,4 @@
-export function SafetyScoreGauge({ score, classification, reason, confidence }: any) {
+export function SafetyScoreGauge({ score = 0, classification = 'UNKNOWN', reason = 'Quality analysis pending', confidence = 'Low' }: any) {
   const getColors = () => {
     if (score >= 70) return { stroke: '#16A34A', text: '#86EFAC', bg: '#14532D', border: '#16A34A' };
     if (score >= 40) return { stroke: '#EAB308', text: '#FDE047', bg: '#713F12', border: '#EAB308' };
@@ -45,7 +45,7 @@ export function SafetyScoreGauge({ score, classification, reason, confidence }: 
       </div>
 
       <div className="px-4 py-2 rounded-full font-bold mb-3 border" style={{ backgroundColor: colors.bg, color: colors.text, borderColor: colors.border }}>
-        {classification.replace('_', ' ').toUpperCase()}
+        {classification?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
       </div>
       
       <p className="text-[#94A3B8] text-center text-sm italic mb-2">"{reason}"</p>

@@ -1,0 +1,24 @@
+{
+  "fresh": {
+    "mean_r": 163.7037,
+    "mean_g": 148.9404,
+    "mean_b": 126.2871,
+    "std": 64.2622,
+    "dark_ratio": 0.1709,
+    "brown_ratio": 0.0512,
+    "green_ratio": 0.1515,
+    "gray_ratio": 0.4532,
+    "sample_count": 390
+  },
+  "rotten": {
+    "mean_r": 166.4054,
+    "mean_g": 149.1042,
+    "mean_b": 135.4123,
+    "std": 67.3905,
+    "dark_ratio": 0.1597,
+    "brown_ratio": 0.0497,
+    "green_ratio": 0.0912,
+    "gray_ratio": 0.4768,
+    "sample_count": 390
+  }
+}

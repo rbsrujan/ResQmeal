@@ -73,7 +73,8 @@ export const ReceiverDashboard = () => {
           status: 'accepted',
           accepted_by: currentUser.id,
           accepted_at: new Date().toISOString(),
-          assigned_receiver_id: currentUser.id
+          assigned_receiver_id: currentUser.id,
+          pickup_status: 'awaiting_volunteer'
         })
         .eq('id', donationId)
         .eq('status', 'pending')  // only accept if still pending
@@ -211,9 +212,17 @@ export const ReceiverDashboard = () => {
 
                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="flex gap-4">
-                           <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center text-3xl overflow-hidden relative">
+                           <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center text-3xl overflow-hidden relative border border-white/10">
                               {donation.image_url ? (
-                                <img src={donation.image_url} alt="food" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                                <img 
+                                  src={donation.image_url} 
+                                  alt={donation.food_name} 
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    (e.target as HTMLImageElement).parentElement!.innerHTML = '🍱';
+                                  }}
+                                />
                               ) : (
                                 <span>{donation.food_type === 'veg' ? '🥬' : '🍗'}</span>
                               )}

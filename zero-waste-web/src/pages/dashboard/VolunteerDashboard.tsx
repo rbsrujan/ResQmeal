@@ -16,7 +16,7 @@ export const VolunteerDashboard = () => {
   const [radiusKm, setRadiusKm] = useState(15);
   const [isAvailable, setIsAvailable] = useState(true);
 
-  const { pickups, loading, newPickupAlert, refetch } =
+  const { pickups, loading, newPickupAlert, isRadiusRelaxed, refetch } =
     useNearbyPickups(volunteerLat, volunteerLng, radiusKm);
 
   // Get volunteer's GPS location on mount
@@ -203,6 +203,29 @@ export const VolunteerDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* DEBUG PANEL — remove after testing */}
+      <div style={{
+        background: '#0F172A', border: '1px solid #334155',
+        borderRadius: 10, padding: '12px 16px',
+        marginBottom: 16, fontSize: 12
+      }}>
+        <div style={{ color: '#64748B', marginBottom: 4 }}>
+          Debug Info:
+        </div>
+        <div style={{ color: '#94A3B8' }}>
+          Location: {volunteerLat 
+            ? `${volunteerLat.toFixed(4)}, ${volunteerLng?.toFixed(4)}` 
+            : locationStatus}
+        </div>
+        <div style={{ color: '#94A3B8' }}>
+          Pickups fetched: {pickups.length} 
+          (radius: {radiusKm}km)
+        </div>
+        <div style={{ color: '#94A3B8' }}>
+          Available: {isAvailable ? 'Yes' : 'No'}
+        </div>
+      </div>
 
       {/* LOCATION STATUS BAR */}
       {locationStatus !== 'granted' && (
@@ -434,9 +457,18 @@ export const VolunteerDashboard = () => {
             Available Pickups Nearby
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {isRadiusRelaxed && (
+              <span style={{
+                background: '#1E3A5F', color: '#60A5FA',
+                padding: '3px 10px', borderRadius: 6,
+                fontSize: 11, fontWeight: 700, border: '1px solid #3B82F644'
+              }}>
+                🔍 RADIUS EXPANDED
+              </span>
+            )}
             {volunteerLat && (
               <span style={{ color: '#64748B', fontSize: 12 }}>
-                📍 Within {radiusKm} km
+                📍 Within {isRadiusRelaxed ? '100+' : radiusKm} km
               </span>
             )}
             <span style={{
@@ -507,6 +539,27 @@ export const VolunteerDashboard = () => {
               gap: 12,
               flexWrap: 'wrap'
             }}>
+              {/* Image Thumbnail */}
+              <div style={{
+                width: 50, height: 50,
+                borderRadius: 8, overflow: 'hidden',
+                background: '#334155', flexShrink: 0
+              }}>
+                {job.image_url ? (
+                  <img 
+                    src={job.image_url} 
+                    alt={job.food_name} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement!.innerHTML = '🍱';
+                    }}
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🍱</div>
+                )}
+              </div>
+
               <div style={{ flex: 1 }}>
                 {/* Food name + badges */}
                 <div style={{
