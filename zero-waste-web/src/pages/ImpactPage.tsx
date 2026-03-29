@@ -1,5 +1,5 @@
 import { ImpactCounter } from '../components/ImpactCounter';
-import { DownloadCloud, Map as MapIcon, Trophy } from 'lucide-react';
+import { DownloadCloud, Map as MapIcon, Trophy, ArrowRight } from 'lucide-react';
 
 export default function ImpactPage() {
   return (

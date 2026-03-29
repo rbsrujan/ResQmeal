@@ -1,23 +1,28 @@
 import { useState, useEffect } from 'react';
 
-export function ImpactCounter({ target, label, prefix = '', suffix = '' }: any) {
+interface ImpactCounterProps {
+  target: number
+  label: string
+  prefix?: string
+  suffix?: string
+}
+
+export function ImpactCounter({
+  target,
+  label,
+  prefix = '',
+  suffix = ''
+}: ImpactCounterProps) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    let start = 0;
-    const duration = 2000;
-    const increment = target / (duration / 16); // 60fps
-
+    let current = 0;
+    const step = target / 80;
     const timer = setInterval(() => {
-      start += increment;
-      if (start >= target) {
-        clearInterval(timer);
-        setCount(target);
-      } else {
-        setCount(Math.floor(start));
-      }
-    }, 16);
-
+      current = Math.min(current + step, target);
+      setCount(Math.floor(current));
+      if (current >= target) clearInterval(timer);
+    }, 20);
     return () => clearInterval(timer);
   }, [target]);
 

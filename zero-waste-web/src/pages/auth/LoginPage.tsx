@@ -61,86 +61,62 @@ const LoginPage = () => {
   };
 
   const handleSignIn = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true)
+    setError('')
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data, error } = await supabase.auth
+      .signInWithPassword({ email, password })
 
     if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
+      setError(error.message)
+      setLoading(false)
+      return
     }
 
     if (!data.user) {
-      setError('Login failed. Please try again.');
-      setLoading(false);
-      return;
+      setError('Login failed. Please try again.')
+      setLoading(false)
+      return
     }
 
-    // 1. Wait for profile with retries (trigger may have slight delay)
-    let userRole: string | null = null;
-    let attempts = 0;
+    // Fetch profile with retries
+    let userRole: string | null = null
+    let attempts = 0
 
-    const fetchRoleFromDB = async () => {
-      const { data: profile, error: fetchError } = await supabase
+    while (!userRole && attempts < 5) {
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', data.user.id)
-        .maybeSingle();
-      
-      if (fetchError) console.warn('fetchRoleFromDB error:', fetchError);
-      return profile?.role || null;
-    };
+        .single()
 
-    while (!userRole && attempts < 8) {
-      userRole = await fetchRoleFromDB();
-      if (userRole) break;
-      await new Promise(resolve => setTimeout(resolve, 500));
-      attempts++;
-    }
-
-    // 2. SELF-HEAL: If profile still missing, reconstruct from metadata
-    if (!userRole) {
-      console.log('Profile missing after retries, checking user_metadata...');
-      const metadata = data.user.user_metadata || {};
-      const foundRole = metadata.role;
-      
-      if (foundRole) {
-        console.log('Role found in metadata:', foundRole, 'Attempting to repair profiles table...');
-        const { error: repairError } = await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: data.user.email!,
-          full_name: metadata.full_name || 'User',
-          role: foundRole as 'donor' | 'volunteer' | 'receiver'
-        });
-
-        if (!repairError) {
-          userRole = foundRole;
-          console.log('Profile repair successful.');
-        } else {
-          console.error('Profile repair failed:', repairError.message);
-        }
+      if (profileData?.role) {
+        userRole = profileData.role
+        break
       }
+
+      await new Promise(r => setTimeout(r, 500))
+      attempts++
     }
 
     if (!userRole) {
-      console.error('CRITICAL: No role found for user', data.user.id, 'after all attempts.');
-      setError('Account setup incomplete. Please try signing up again or contact support.');
-      await supabase.auth.signOut();
-      setLoading(false);
-      return;
+      setError('Profile not found. Please register again.')
+      await supabase.auth.signOut()
+      setLoading(false)
+      return
     }
 
-    console.log('Successfully resolved role:', userRole);
+    // Navigate based on role — NO fallback to donor
+    if (userRole === 'volunteer') {
+      navigate('/dashboard/volunteer', { replace: true })
+    } else if (userRole === 'receiver') {
+      navigate('/dashboard/receiver', { replace: true })
+    } else if (userRole === 'donor') {
+      navigate('/dashboard/donor', { replace: true })
+    }
 
-    // Final navigation based on verified role
-    navigateToDashboard(userRole);
-    setLoading(false);
-  };
+    setLoading(false)
+  }
 
   const handleSignUp = async () => {
     if (!fullName.trim()) { setError('Please enter your full name'); return; }
