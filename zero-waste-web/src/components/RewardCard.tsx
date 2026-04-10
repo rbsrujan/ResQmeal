@@ -19,3 +19,5 @@ export function RewardCard({ icon, title, cost, onRedeem, disabled }: any) {
     </div>
   );
 }
+
+// Resubmission commit update

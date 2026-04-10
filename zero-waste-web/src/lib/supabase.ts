@@ -4,3 +4,5 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xyzcompany.sup
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'public-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Resubmission commit update

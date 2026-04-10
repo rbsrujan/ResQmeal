@@ -55,3 +55,5 @@ export const VolunteerMap = ({ points }: { points: [number, number][] }) => {
     </div>
   );
 };
+
+// Resubmission commit update

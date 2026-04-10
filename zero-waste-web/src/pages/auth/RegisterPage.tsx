@@ -110,3 +110,5 @@ const RegisterPage = () => {
 };
 
 export default RegisterPage;
+
+// Resubmission commit update

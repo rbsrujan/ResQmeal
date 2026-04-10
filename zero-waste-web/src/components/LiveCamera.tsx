@@ -102,3 +102,5 @@ export function LiveCamera({ onCapture }: LiveCameraProps) {
     </div>
   );
 }
+
+// Resubmission commit update
